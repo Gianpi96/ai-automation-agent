@@ -1,16 +1,15 @@
+import hmac
 import logging
 from datetime import datetime, UTC, timedelta
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 from pydantic import BaseModel
 from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer = HTTPBearer(auto_error=False)
 
 ALGORITHM = "HS256"
@@ -49,13 +48,11 @@ def verify_token(credentials: HTTPAuthorizationCredentials | None = Depends(bear
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest) -> TokenResponse:
-    if body.username != settings.admin_username:
+    # hmac.compare_digest prevents timing attacks
+    username_ok = hmac.compare_digest(body.username, settings.admin_username)
+    password_ok = hmac.compare_digest(body.password, settings.admin_password)
+    if not (username_ok and password_ok):
         raise HTTPException(status_code=401, detail="Credenziali non valide.")
-    if not pwd_context.verify(body.password, pwd_context.hash(settings.admin_password)):
-        # Constant-time comparison via passlib
-        valid = body.password == settings.admin_password
-        if not valid:
-            raise HTTPException(status_code=401, detail="Credenziali non valide.")
     token = create_token(body.username)
     logger.info("Login successful: %s", body.username)
     return TokenResponse(access_token=token)

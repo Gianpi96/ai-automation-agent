@@ -30,7 +30,6 @@ cachetools>=5.3.3
 
 # Auth
 python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
 
 # Web search
 ddgs>=9.0.0
