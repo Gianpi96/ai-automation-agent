@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Play, Loader2, CheckCircle, AlertCircle, Wrench, BarChart2 } from 'lucide-react'
+import { Play, Loader2, CheckCircle, AlertCircle, Wrench } from 'lucide-react'
 import { api } from '@/lib/api'
 import type { AgentResult } from '@/types'
 import clsx from 'clsx'
+import Markdown from 'react-markdown'
 
 export default function AgentRunner() {
   const [query, setQuery] = useState('')
@@ -81,7 +82,9 @@ export default function AgentRunner() {
               <CheckCircle className="w-4 h-4 text-green-600" />
               <span className="text-sm font-semibold text-green-800">Risposta</span>
             </div>
-            <p className="text-sm text-gray-800 leading-relaxed">{result.answer}</p>
+            <div className="prose prose-sm max-w-none text-gray-800 [&_a]:text-blue-600 [&_a]:underline [&_strong]:font-semibold">
+              <Markdown>{result.answer}</Markdown>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
