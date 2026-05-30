@@ -63,7 +63,7 @@ async def process_email_by_id(email_id: str) -> EmailProcessResult:
         _email_results[email_id] = result
         if result.draft:
             _drafts[result.draft.draft_id] = result.draft
-        tracker.record(ExecutionRecord(
+        await tracker.record(ExecutionRecord(
             agent_id="email-agent",
             agent_name="Agente Email",
             status="completed",
@@ -119,3 +119,43 @@ async def approve_draft(draft_id: str, request: DraftApprovalRequest) -> EmailDr
 @router.get("/drafts", response_model=list[EmailDraft])
 async def list_drafts() -> list[EmailDraft]:
     return list(_drafts.values())
+
+
+@router.get("/imap/inbox", response_model=list[Email])
+async def get_imap_inbox(limit: int = 10) -> list[Email]:
+    """Fetch real unread emails via IMAP. Configure IMAP_* in .env"""
+    from app.services.imap_reader import fetch_real_emails
+    from app.config import settings
+    if not settings.imap_host:
+        raise HTTPException(
+            status_code=503,
+            detail="IMAP non configurato. Imposta IMAP_HOST, IMAP_USER, IMAP_PASSWORD nel file .env"
+        )
+    try:
+        emails = await fetch_real_emails(limit=limit)
+        return emails
+    except Exception as e:
+        logger.error("IMAP error: %s", e)
+        raise HTTPException(status_code=502, detail=f"Errore IMAP: {e}")
+
+
+@router.post("/imap/process-all", response_model=list[EmailProcessResult])
+async def process_imap_emails(limit: int = 10) -> list[EmailProcessResult]:
+    """Fetch + classify + draft all unread IMAP emails."""
+    from app.services.imap_reader import fetch_real_emails
+    from app.config import settings
+    if not settings.imap_host:
+        raise HTTPException(status_code=503, detail="IMAP non configurato.")
+    emails = await fetch_real_emails(limit=limit)
+    results = []
+    for em in emails:
+        try:
+            from app.agents.email_agent import process_email as _process
+            result = await _process(em)
+            _email_results[em.id] = result
+            if result.draft:
+                _drafts[result.draft.draft_id] = result.draft
+            results.append(result)
+        except Exception as e:
+            logger.error("Failed to process IMAP email %s: %s", em.id, e)
+    return results

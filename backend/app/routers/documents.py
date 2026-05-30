@@ -80,7 +80,7 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentUploadRespons
     }
 
     document_cache.set(fhash, response_data)
-    tracker.record(ExecutionRecord(
+    await tracker.record(ExecutionRecord(
         agent_id="document-agent",
         agent_name="Agente Documenti",
         status="completed",

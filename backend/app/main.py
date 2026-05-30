@@ -1,9 +1,11 @@
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.database.base import init_db
 from app.routers import agent, documents, email_router, websocket
+from app.routers.auth import router as auth_router, verify_token
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,6 +19,8 @@ async def lifespan(app: FastAPI):
     logger.info("AI Automation Agent starting up...")
     import app.tools  # noqa: F401 — trigger tool registration
     logger.info("Tools registered: %s", app.tools.list_tools())
+    await init_db()
+    logger.info("Database initialized")
     yield
     logger.info("AI Automation Agent shutting down...")
 
@@ -36,10 +40,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(agent.router)
-app.include_router(documents.router)
-app.include_router(email_router.router)
-app.include_router(websocket.router)
+# Public routes
+app.include_router(auth_router)
+
+# Protected routes (require JWT)
+protected = {"dependencies": [Depends(verify_token)]}
+app.include_router(agent.router, **protected)
+app.include_router(documents.router, **protected)
+app.include_router(email_router.router, **protected)
+app.include_router(websocket.router)  # WS handles its own auth
 
 
 @app.get("/")

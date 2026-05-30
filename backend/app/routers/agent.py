@@ -15,7 +15,7 @@ async def run_agent(request: AgentRequest) -> AgentResult:
     started_at = datetime.now(UTC)
     try:
         result = await run_react_loop(request.query, request.context)
-        tracker.record(ExecutionRecord(
+        await tracker.record(ExecutionRecord(
             agent_id="react-agent",
             agent_name="Agente ReAct",
             status=result.status.value,
@@ -26,7 +26,7 @@ async def run_agent(request: AgentRequest) -> AgentResult:
         ))
         return result
     except Exception as e:
-        tracker.record(ExecutionRecord(
+        await tracker.record(ExecutionRecord(
             agent_id="react-agent",
             agent_name="Agente ReAct",
             status="failed",
