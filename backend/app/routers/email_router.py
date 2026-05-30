@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi import APIRouter, HTTPException
 from app.models.email_model import (
     Email, EmailProcessResult, DraftApprovalRequest, EmailDraft,
@@ -96,7 +96,7 @@ async def approve_draft(draft_id: str, request: DraftApprovalRequest) -> EmailDr
 
     if request.approved:
         draft.approved = True
-        draft.approved_at = datetime.utcnow()
+        draft.approved_at = datetime.now(UTC)
         if request.modifications:
             draft.body = request.modifications
         logger.info("Draft %s approved by user", draft_id)

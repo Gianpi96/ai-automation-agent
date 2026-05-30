@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter(tags=["websocket"])
@@ -42,16 +42,16 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         await ws.send_json({
             "type": "connected",
             "message": "Real-time notifications active",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         })
         while True:
             try:
                 data = await asyncio.wait_for(ws.receive_text(), timeout=30)
                 msg = json.loads(data)
                 if msg.get("type") == "ping":
-                    await ws.send_json({"type": "pong", "timestamp": datetime.utcnow().isoformat()})
+                    await ws.send_json({"type": "pong", "timestamp": datetime.now(UTC).isoformat()})
             except asyncio.TimeoutError:
-                await ws.send_json({"type": "heartbeat", "timestamp": datetime.utcnow().isoformat()})
+                await ws.send_json({"type": "heartbeat", "timestamp": datetime.now(UTC).isoformat()})
     except WebSocketDisconnect:
         manager.disconnect(ws)
 
@@ -61,5 +61,5 @@ async def notify(event_type: str, payload: dict) -> None:
     await manager.broadcast({
         "type": event_type,
         "payload": payload,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     })

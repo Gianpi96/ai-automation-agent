@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 
@@ -25,7 +25,7 @@ class Email(BaseModel):
     sender: str
     subject: str
     body: str
-    received_at: datetime = Field(default_factory=datetime.utcnow)
+    received_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     attachments: list[str] = []
 
 
@@ -46,7 +46,7 @@ class EmailDraft(BaseModel):
     subject: str
     body: str
     tone: str
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     approved: bool = False
     approved_at: datetime | None = None
 

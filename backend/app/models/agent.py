@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 
@@ -31,7 +31,7 @@ class AgentResult(BaseModel):
     status: AgentStatus = AgentStatus.COMPLETED
     tool_calls: list[ToolCall] = []
     total_duration_ms: int = 0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class StepLog(BaseModel):

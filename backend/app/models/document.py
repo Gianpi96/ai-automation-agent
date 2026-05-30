@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 
@@ -28,7 +28,7 @@ class DocumentMetadata(BaseModel):
     extraction_method: ExtractionMethod
     chunk_count: int
     cached: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class DocumentUploadResponse(BaseModel):

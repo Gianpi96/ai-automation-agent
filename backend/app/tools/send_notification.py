@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from app.tools.registry import register_tool
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ async def send_notification(
         "message": message,
         "channel": channel,
         "priority": priority,
-        "sent_at": datetime.utcnow().isoformat(),
+        "sent_at": datetime.now(UTC).isoformat(),
         "delivered": True,
     }
     _notifications_store.append(notification)
