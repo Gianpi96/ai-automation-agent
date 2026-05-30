@@ -32,11 +32,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   frontend:
     build:
@@ -46,10 +41,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:8000
+      # Il browser dell'utente raggiunge il backend su localhost:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8000
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
 
 volumes:
   pgdata:
