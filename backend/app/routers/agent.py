@@ -47,9 +47,14 @@ async def list_available_tools() -> dict:
 
 @router.get("/stats")
 async def get_stats() -> dict:
-    return tracker.get_stats()
+    return await tracker.get_stats()
 
 
 @router.get("/logs")
 async def get_logs() -> list:
-    return tracker.get_logs()
+    return await tracker.get_logs()
+
+
+@router.get("/agents/stats")
+async def get_agents_stats() -> list:
+    return await tracker.get_agents_stats()

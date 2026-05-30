@@ -66,6 +66,46 @@ class StatsTracker:
             logger.error("get_stats DB error: %s", e)
             return {"processedToday": 0, "timeSavedMinutes": 0, "successRate": 0.0, "activeAgents": 0}
 
+    async def get_agents_stats(self) -> list[dict]:
+        """Per-agent stats for today."""
+        try:
+            today = date.today()
+            async with SessionLocal() as session:
+                q = select(ExecutionLogModel).where(
+                    cast(ExecutionLogModel.started_at, Date) == today
+                )
+                result = await session.execute(q)
+                rows = result.scalars().all()
+
+            agents = {
+                "react-agent":    {"id": "react-agent",    "name": "Agente ReAct",      "runs": 0, "total_ms": 0, "success": 0},
+                "document-agent": {"id": "document-agent", "name": "Agente Documenti",  "runs": 0, "total_ms": 0, "success": 0},
+                "email-agent":    {"id": "email-agent",    "name": "Agente Email",      "runs": 0, "total_ms": 0, "success": 0},
+            }
+            for r in rows:
+                if r.agent_id not in agents:
+                    continue
+                a = agents[r.agent_id]
+                a["runs"] += 1
+                a["total_ms"] += r.duration_ms
+                if r.status == "completed":
+                    a["success"] += 1
+
+            result_list = []
+            for a in agents.values():
+                runs = a["runs"]
+                result_list.append({
+                    "id": a["id"],
+                    "name": a["name"],
+                    "runsToday": runs,
+                    "avgDuration": round(a["total_ms"] / runs) if runs else 0,
+                    "successRate": round(a["success"] / runs, 2) if runs else 0.0,
+                })
+            return result_list
+        except Exception as e:
+            logger.error("get_agents_stats error: %s", e)
+            return []
+
     async def get_logs(self, limit: int = 20) -> list[dict]:
         try:
             async with SessionLocal() as session:

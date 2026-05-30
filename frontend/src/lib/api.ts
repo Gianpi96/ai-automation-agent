@@ -44,6 +44,7 @@ export const api = {
   listTools: () => fetchApi('/api/agent/tools'),
   getStats: () => fetchApi('/api/agent/stats'),
   getLogs: () => fetchApi('/api/agent/logs'),
+  getAgentsStats: () => fetchApi('/api/agent/agents/stats'),
 
   uploadDocument: async (file: File) => {
     const token = getToken()
