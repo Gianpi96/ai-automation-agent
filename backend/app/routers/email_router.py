@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime, UTC
 from fastapi import APIRouter, HTTPException
+from app.services.stats import tracker, ExecutionRecord
 from app.models.email_model import (
     Email, EmailProcessResult, DraftApprovalRequest, EmailDraft,
 )
@@ -62,6 +63,15 @@ async def process_email_by_id(email_id: str) -> EmailProcessResult:
         _email_results[email_id] = result
         if result.draft:
             _drafts[result.draft.draft_id] = result.draft
+        tracker.record(ExecutionRecord(
+            agent_id="email-agent",
+            agent_name="Agente Email",
+            status="completed",
+            started_at=datetime.now(UTC),
+            duration_ms=result.processing_time_ms,
+            iterations=1,
+            tools_used=[],
+        ))
         return result
     except Exception as e:
         logger.error("Email processing failed: %s", e)

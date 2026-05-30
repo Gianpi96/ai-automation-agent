@@ -1,8 +1,11 @@
 import logging
+import time
 import uuid
 import filetype
+from datetime import datetime, UTC
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from app.config import settings
+from app.services.stats import tracker, ExecutionRecord
 from app.models.document import (
     DocumentMetadata, DocumentType, DocumentUploadResponse,
     DocumentQueryRequest, DocumentQueryResponse,
@@ -76,13 +79,17 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentUploadRespons
         "message": f"Document processed with {extraction_method} extraction. {len(chunks)} chunks created.",
     }
 
-    # Cache for 1 hour
     document_cache.set(fhash, response_data)
-
-    logger.info(
-        "Document uploaded id=%s method=%s chunks=%d chars=%d",
-        document_id, extraction_method, len(chunks), len(text),
-    )
+    tracker.record(ExecutionRecord(
+        agent_id="document-agent",
+        agent_name="Agente Documenti",
+        status="completed",
+        started_at=datetime.now(UTC),
+        duration_ms=0,
+        iterations=1,
+        tools_used=[],
+    ))
+    logger.info("Document uploaded id=%s method=%s chunks=%d", document_id, extraction_method, len(chunks))
     return DocumentUploadResponse(**response_data)
 
 

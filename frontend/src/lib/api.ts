@@ -57,5 +57,9 @@ export const api = {
 
   getDrafts: () => fetchApi('/api/emails/drafts'),
 
+  getStats: () => fetchApi('/api/agent/stats'),
+
+  getLogs: () => fetchApi('/api/agent/logs'),
+
   healthCheck: () => fetchApi('/health'),
 }
