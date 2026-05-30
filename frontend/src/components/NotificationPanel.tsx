@@ -21,7 +21,10 @@ export default function NotificationPanel() {
         setConnected(true)
         return
       }
-      if (data.type === 'heartbeat' || data.type === 'pong') return
+      if (data.type === 'heartbeat' || data.type === 'pong') {
+        setConnected(true)
+        return
+      }
 
       const notif: Notification = {
         id: `n_${Date.now()}`,
@@ -36,13 +39,20 @@ export default function NotificationPanel() {
       setUnread((n) => n + 1)
     })
 
+    // Detect network going offline
     const handleOffline = () => setConnected(false)
-    const handleOnline = () => wsManager.connect()
+    const handleOnline = () => { setConnected(false); wsManager.connect() }
     window.addEventListener('offline', handleOffline)
     window.addEventListener('online', handleOnline)
 
+    // Poll connected state every 4s to reflect reconnects/disconnects
+    const poll = setInterval(() => {
+      setConnected(wsManager.isConnected())
+    }, 4000)
+
     return () => {
       unsub()
+      clearInterval(poll)
       window.removeEventListener('offline', handleOffline)
       window.removeEventListener('online', handleOnline)
     }

@@ -7,6 +7,7 @@ class WebSocketManager {
   private handlers: Set<MessageHandler> = new Set()
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private url: string
+  private connected = false
 
   constructor(url: string) {
     this.url = url
@@ -18,7 +19,7 @@ class WebSocketManager {
     this.ws = new WebSocket(this.url)
 
     this.ws.onopen = () => {
-      console.log('[WS] Connected')
+      this.connected = true
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer)
         this.reconnectTimer = null
@@ -35,12 +36,16 @@ class WebSocketManager {
     }
 
     this.ws.onclose = () => {
-      console.log('[WS] Disconnected, reconnecting in 3s...')
+      this.connected = false
       this.reconnectTimer = setTimeout(() => this.connect(), 3000)
     }
 
-    this.ws.onerror = (e) => {
-      console.error('[WS] Error', e)
+    // onerror fires before onclose; just let onclose handle the reconnect.
+    // Log only if it was previously connected (unexpected drop), not on first connect attempt.
+    this.ws.onerror = () => {
+      if (this.connected) {
+        console.warn('[WS] Connection lost, will retry in 3s...')
+      }
       this.ws?.close()
     }
   }
@@ -54,6 +59,10 @@ class WebSocketManager {
   subscribe(handler: MessageHandler) {
     this.handlers.add(handler)
     return () => this.handlers.delete(handler)
+  }
+
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN
   }
 
   send(data: Record<string, unknown>) {
