@@ -1,6 +1,75 @@
-# AI Automation Agent
+# ai-automation-agent
 
-Sistema di agenti AI basato su Groq LLM (`llama-3.3-70b-versatile`) con loop ReAct, processing documenti, automazione email e dashboard Next.js 14.
+[![Build](https://img.shields.io/github/actions/workflow/status/Gianpi96/ai-automation-agent/ci.yml?branch=main&label=build&style=flat-square)](https://github.com/Gianpi96/ai-automation-agent/actions)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue?style=flat-square)](https://www.python.org)
+
+**An AI agent that reads documents, classifies emails, and searches the web — with a real-time dashboard to watch it work.**
+
+---
+
+## What you get
+
+- **Agente ReAct con Groq LLM** — l'agente usa il modello `llama-3.3-70b` via Groq per ragionare in loop: osserva, decide quale tool usare, agisce, osserva il risultato, e itera fino a 5 volte per risolvere query complesse. Non è un chatbot — è un sistema che porta a termine compiti.
+- **Dashboard real-time** — interfaccia Next.js 14 con WebSocket che mostra ogni step dell'agente in diretta: quale tool sta usando, cosa ha trovato, quanto ci sta mettendo. Non una barra di caricamento — ogni azione è visibile.
+- **Elaborazione documenti con OCR** — carica un PDF o DOCX (fino a 10MB) e l'agente lo legge, estrae il testo con OCR se necessario, e risponde a domande sul contenuto.
+- **Agente email** — classifica i messaggi in arrivo per priorità e genera bozze di risposta. Non invia mai nulla automaticamente senza approvazione umana esplicita.
+- **Ricerca web integrata** — tool `search_web` che recupera informazioni aggiornate da internet quando la risposta non è nel documento o nella memoria dell'agente.
+- **13+ endpoint REST documentati** — API FastAPI con documentazione automatica su `/docs`. Ogni endpoint ha schema di input/output, esempi, e codici di errore.
+- **PostgreSQL per la persistenza** — i risultati delle run, i documenti elaborati, e le classificazioni email vengono salvati e sono interrogabili. Niente si perde al riavvio.
+- **Docker Compose per il deploy** — un comando avvia backend, frontend, e database insieme.
+
+---
+
+## Screenshots
+
+> Aggiungi screenshot/GIF della dashboard qui: `![Agent Dashboard](docs/screenshot-dashboard.png)`
+
+---
+
+## Quick start
+
+```bash
+# 1. Clona e configura
+git clone https://github.com/Gianpi96/ai-automation-agent
+cd ai-automation-agent
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+
+# 2. Avvia tutto con Docker
+docker-compose up --build
+```
+
+Frontend: `http://localhost:3000`
+Backend API docs: `http://localhost:8000/docs`
+
+Per testare l'agente direttamente:
+```bash
+curl -X POST http://localhost:8000/api/agent/run \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Search the web for the latest Next.js 15 features and summarize them"}'
+```
+
+---
+
+## Environment variables
+
+### Backend (`backend/.env`)
+
+| Variable | Required | Example | Dove trovarla |
+|---|---|---|---|
+| `GROQ_API_KEY` | ✅ | `gsk_xxxxxxxxxxxx` | console.groq.com/keys |
+| `GROQ_MODEL` | ✅ | `llama-3.3-70b-versatile` | Modello Groq da usare |
+| `DATABASE_URL` | ✅ | `postgresql://user:pass@db/agent` | Docker Compose o esterno |
+| `MAX_ITERATIONS` | ⬜ | `5` | Massimo loop ReAct (default: 5) |
+| `MAX_DOCUMENT_SIZE_MB` | ⬜ | `10` | Limite upload documenti |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Required | Example |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | ✅ | `http://localhost:8000` |
+| `NEXT_PUBLIC_WS_URL` | ✅ | `ws://localhost:8000` |
 
 ---
 
@@ -8,344 +77,83 @@ Sistema di agenti AI basato su Groq LLM (`llama-3.3-70b-versatile`) con loop ReA
 
 ```
 ai-automation-agent/
-├── backend/              # FastAPI + Python 3.12
+├── backend/                      # FastAPI + agente IA
+│   ├── agents/
+│   │   ├── react_agent.py        # Loop ReAct principale
+│   │   ├── document_processor.py # Elaborazione PDF/DOCX con OCR
+│   │   └── email_agent.py        # Classificazione e bozze email
+│   ├── tools/
+│   │   ├── search_web.py         # Ricerca web
+│   │   ├── read_file.py          # Lettura documenti caricati
+│   │   └── send_notification.py  # Notifiche WebSocket al frontend
+│   ├── services/
+│   │   ├── groq_client.py        # Client LLM con retry e logging
+│   │   └── cache.py              # Cache risultati per query ripetute
+│   ├── routers/
+│   │   ├── agent.py              # POST /run, GET /status/:id
+│   │   ├── documents.py          # Upload e query documenti
+│   │   └── emails.py             # Classificazione email
+│   └── websocket/
+│       └── manager.py            # Gestione connessioni WebSocket
+│
+├── frontend/                     # Next.js 14 dashboard
 │   ├── app/
-│   │   ├── main.py       # Entry point FastAPI
-│   │   ├── config.py     # Settings (pydantic-settings)
-│   │   ├── agents/       # ReAct, Document, Email agents
-│   │   ├── tools/        # search_web, read_file, send_notification
-│   │   ├── services/     # Groq client, cache, document processor
-│   │   ├── models/       # Pydantic models
-│   │   └── routers/      # FastAPI routers + WebSocket
-│   └── tests/            # pytest (SQLite in-memory)
-├── frontend/             # Next.js 14 + Tailwind CSS
-│   └── src/
-│       ├── app/          # App Router
-│       ├── components/   # AgentList, Logs, Stats, Notifications
-│       └── lib/          # API client, WebSocket manager
-└── docker-compose.yml    # PostgreSQL + Backend + Frontend
+│   │   └── dashboard/
+│   │       ├── page.tsx          # Dashboard principale
+│   │       └── documents/        # Upload e gestione documenti
+│   └── components/
+│       ├── AgentList.tsx         # Lista run agente
+│       ├── Logs.tsx              # Log real-time via WebSocket
+│       ├── Stats.tsx             # Statistiche utilizzo
+│       └── Notifications.tsx     # Notifiche push
+│
+└── docker-compose.yml            # Backend + Frontend + PostgreSQL
+```
+
+**Flusso di una run dell'agente:**
+
+```
+POST /api/agent/run { "query": "..." }
+  → Avvia loop ReAct
+  → Iterazione 1: LLM decide quale tool usare
+  → Tool eseguito → output restituito all'LLM
+  → Notifica WebSocket → dashboard si aggiorna in real-time
+  → Iterazione 2-5: LLM valuta se ha abbastanza informazioni
+  → Se sì: genera risposta finale
+  → Salva run nel database (query, tool usati, risposta, tempo)
+  → Risposta JSON con risultato + metadata
 ```
 
 ---
 
-## Prerequisiti
+## Il loop ReAct spiegato
 
-- **Python 3.12+** (nota: il Dockerfile usa 3.12-slim per compatibilità librerie)
-- **Node.js 20+**
-- **Docker + Docker Compose** (per PostgreSQL)
-- **Chiave API Groq**: [console.groq.com](https://console.groq.com)
+ReAct (Reasoning + Acting) è il pattern che differenzia un agente da una semplice chiamata LLM:
+
+```
+[Thought] Ho bisogno di cercare informazioni su X
+[Action] search_web("X latest news")
+[Observation] Trovati 5 risultati: ...
+[Thought] Ho abbastanza informazioni, posso rispondere
+[Final Answer] ...
+```
+
+L'agente non indovina — ragiona su cosa sa, decide cosa fare, verifica il risultato, e itera. Il limite di 5 iterazioni previene loop infiniti mantenendo la capacità di affrontare query complesse.
 
 ---
 
-## Setup Passo per Passo
+## Why this stack
 
-### 1. Clonare / inizializzare il repo
+**Groq invece di OpenAI diretta** — Groq offre latenza ~10x inferiore su modelli open-source come Llama 3.3. Per un agente che itera 5 volte per query, la latenza si moltiplica: a 500ms per chiamata invece di 5s, l'esperienza utente cambia completamente.
 
-```bash
-# Se è già presente la cartella:
-cd "C:\Users\ingra\Desktop\python projects\ai-automation-agent"
-git init
-git add .
-git commit -m "feat: initial project setup - ReAct agent, document processor, email agent, Next.js dashboard"
-```
+**WebSocket per il real-time invece di polling** — con polling ogni secondo il client farebbe 60 chiamate API al minuto per utente. WebSocket mantiene una connessione aperta e il server notifica solo quando c'è qualcosa di nuovo. Sotto carico la differenza è enorme.
 
-### 2. Configurare le variabili d'ambiente
+**PostgreSQL per la persistenza delle run** — salvare ogni run permette di analizzare pattern di utilizzo, debuggare comportamenti anomali, e costruire funzionalità di cronologia. Con storage solo in memoria si perde tutto a ogni riavvio.
 
-```bash
-# Il file .env è già presente con la chiave Groq configurata
-# Per modificarlo:
-notepad backend\.env
-```
-
-Variabili principali:
-```env
-GROQ_API_KEY=gsk_...           # La tua chiave Groq
-GROQ_MODEL=llama-3.3-70b-versatile
-REACT_MAX_ITERATIONS=5         # Max iterazioni loop ReAct
-REACT_TIMEOUT=30               # Timeout globale (secondi)
-GROQ_TIMEOUT=10                # Timeout singola chiamata Groq
-```
-
-### 3. Backend — installazione locale
-
-```bash
-cd backend
-
-# Crea virtualenv
-python -m venv .venv
-.venv\Scripts\activate         # Windows PowerShell
-
-# Installa dipendenze
-pip install -r requirements.txt
-
-# Avvia il server
-uvicorn app.main:app --reload --port 8000
-```
-
-Il server sarà disponibile su: http://localhost:8000
-Documentazione API: http://localhost:8000/docs
-
-### 4. Frontend — installazione
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-La dashboard sarà disponibile su: http://localhost:3000
-
-### 5. Con Docker (Backend + Frontend + PostgreSQL)
-
-```bash
-# Dalla root del progetto:
-docker-compose up --build
-
-# In background:
-docker-compose up -d --build
-
-# Stop:
-docker-compose down
-```
+**OCR integrato per i documenti** — molti PDF sono scan di documenti fisici, non PDF nativi con testo selezionabile. Senza OCR, metà dei documenti che gli utenti caricano risulterebbero vuoti. L'OCR è trasparente — l'utente carica e basta.
 
 ---
 
-## Test Passo per Passo
+## License
 
-### Test 1: Avviare il backend e verificare health
-
-```bash
-cd backend
-.venv\Scripts\activate
-uvicorn app.main:app --reload
-
-# In altro terminale:
-curl http://localhost:8000/health
-# Output atteso: {"status":"healthy"}
-
-curl http://localhost:8000/api/agent/tools
-# Output atteso: lista di search_web, read_file, send_notification
-```
-
-### Test 2: Loop ReAct con 2 tool consecutivi
-
-```bash
-curl -X POST http://localhost:8000/api/agent/run \
-  -H "Content-Type: application/json" \
-  -d "{\"query\": \"Cerca notizie su Python e inviami una notifica con il risultato\"}"
-```
-
-Output atteso (JSON):
-```json
-{
-  "answer": "...",
-  "tools_used": ["search_web", "send_notification"],
-  "iterations": 2,
-  "confidence": 0.85,
-  "status": "completed"
-}
-```
-
-### Test 3: max_iterations rispettato
-
-```bash
-# Il parametro REACT_MAX_ITERATIONS=5 nel .env limita le iterazioni
-# I test automatici verificano questo:
-cd backend
-pytest tests/test_react_agent.py::test_react_max_iterations_respected -v
-```
-
-### Test 4: Upload documento PDF
-
-```bash
-# Crea un PDF di test (serve un file PDF reale)
-curl -X POST http://localhost:8000/api/documents/upload \
-  -F "file=@test_document.pdf"
-
-# Upload file > 10MB → deve restituire 413
-# (crea un file finto)
-python -c "open('big.pdf', 'wb').write(b'x' * (10*1024*1024 + 1))"
-curl -X POST http://localhost:8000/api/documents/upload \
-  -F "file=@big.pdf"
-# Atteso: {"detail":"File too large. Max size is 10MB."}
-```
-
-### Test 5: Email agent (classificazione + bozza)
-
-```bash
-# Vedi le email simulate nell'inbox
-curl http://localhost:8000/api/emails/inbox
-
-# Processa l'email di reclamo
-curl -X POST http://localhost:8000/api/emails/process/email_001
-
-# Output: classificazione + bozza con approved=false
-# La bozza NON viene mai inviata automaticamente!
-
-# Approva la bozza manualmente (usa il draft_id dal response)
-curl -X POST http://localhost:8000/api/emails/drafts/{DRAFT_ID}/approve \
-  -H "Content-Type: application/json" \
-  -d "{\"approved\": true}"
-```
-
-### Test 6: Eseguire tutti i test automatici
-
-```bash
-cd backend
-pytest -v
-
-# Test specifici:
-pytest tests/test_react_agent.py -v           # Test agente ReAct
-pytest tests/test_document.py -v             # Test upload documenti
-pytest tests/test_email_agent.py -v          # Test email agent
-
-# Con coverage:
-pytest --cov=app tests/ -v
-```
-
-### Test 7: WebSocket notifiche in tempo reale
-
-Apri due tab nel browser su http://localhost:3000.
-Il pannello delle notifiche (icona campanella in alto a destra) mostra:
-- Status connessione WebSocket (verde = connesso)
-- Notifiche in tempo reale da tutti i tab
-
-Per testare:
-```javascript
-// Nella console del browser:
-const ws = new WebSocket('ws://localhost:8000/ws');
-ws.onmessage = (e) => console.log(JSON.parse(e.data));
-ws.send(JSON.stringify({type: 'ping'}));
-// Atteso: {type: 'pong', timestamp: '...'}
-```
-
----
-
-## API Reference
-
-### Agente ReAct
-| Metodo | Endpoint | Descrizione |
-|--------|----------|-------------|
-| POST | `/api/agent/run` | Esegui il loop ReAct |
-| GET | `/api/agent/tools` | Lista tool disponibili |
-
-### Documenti
-| Metodo | Endpoint | Descrizione |
-|--------|----------|-------------|
-| POST | `/api/documents/upload` | Upload PDF/DOCX (max 10MB) |
-| POST | `/api/documents/query` | Query su documento caricato |
-
-### Email
-| Metodo | Endpoint | Descrizione |
-|--------|----------|-------------|
-| GET | `/api/emails/inbox` | Email simulate in arrivo |
-| POST | `/api/emails/process/{id}` | Classifica + genera bozza |
-| POST | `/api/emails/process-all` | Processa tutto l'inbox |
-| POST | `/api/emails/drafts/{id}/approve` | Approva/rifiuta bozza |
-| GET | `/api/emails/drafts` | Lista tutte le bozze |
-
-### WebSocket
-| Endpoint | Descrizione |
-|----------|-------------|
-| `ws://localhost:8000/ws` | Notifiche real-time |
-
----
-
-## Come fare il primo commit Git
-
-```bash
-# Dalla root del progetto
-cd "C:\Users\ingra\Desktop\python projects\ai-automation-agent"
-
-# 1. Inizializza il repository
-git init
-
-# 2. Configura identità (solo la prima volta)
-git config user.name "Il Tuo Nome"
-git config user.email "tua@email.com"
-
-# 3. Aggiungi tutti i file (il .gitignore esclude .env, node_modules, etc.)
-git add .
-
-# 4. Verifica cosa viene aggiunto
-git status
-
-# 5. Primo commit
-git commit -m "feat: initial setup - ReAct agent + document processor + email agent + Next.js dashboard"
-
-# 6. (Opzionale) Collega a GitHub
-git remote add origin https://github.com/TUO_USERNAME/ai-automation-agent.git
-git branch -M main
-git push -u origin main
-```
-
-### Workflow quotidiano
-
-```bash
-# Crea un branch per nuove feature
-git checkout -b feat/nuova-feature
-
-# Fai le modifiche, poi:
-git add .
-git commit -m "feat: descrizione della feature"
-
-# Torna a main e mergia
-git checkout main
-git merge feat/nuova-feature
-
-# Push su GitHub
-git push
-```
-
----
-
-## Struttura dei Model Pydantic
-
-### AgentResult
-```python
-class AgentResult(BaseModel):
-    answer: str              # Risposta finale dell'agente
-    tools_used: list[str]    # Tool chiamati durante il loop
-    iterations: int          # Numero di iterazioni usate (max 5)
-    confidence: float        # Confidenza 0.0-1.0
-    status: AgentStatus      # completed | failed | timeout
-    tool_calls: list[ToolCall]  # Dettaglio ogni chiamata tool
-    total_duration_ms: int   # Durata totale in ms
-```
-
-### EmailDraft (mai auto-inviata)
-```python
-class EmailDraft(BaseModel):
-    draft_id: str
-    subject: str
-    body: str
-    approved: bool = False   # Sempre False finché umano non approva
-    approved_at: datetime | None = None
-```
-
----
-
-## Troubleshooting
-
-**`ModuleNotFoundError: groq`**
-```bash
-pip install -r requirements.txt
-```
-
-**`pytesseract.pytesseract.TesseractNotFoundError`**
-```bash
-# Windows: scarica installer da https://github.com/UB-Mannheim/tesseract/wiki
-# Poi aggiungi al PATH: C:\Program Files\Tesseract-OCR
-```
-
-**`APIAuthenticationError` da Groq**
-- Verifica `GROQ_API_KEY` nel file `backend/.env`
-- Controlla che la chiave sia valida su console.groq.com
-
-**Port 8000 già in uso**
-```bash
-# Trova il processo
-netstat -ano | findstr :8000
-# Termina il processo con il PID trovato
-taskkill /PID <PID> /F
-```
+MIT
