@@ -1,6 +1,6 @@
 # ai-automation-agent
 
-[![Build](https://img.shields.io/github/actions/workflow/status/Gianpi96/ai-automation-agent/ci.yml?branch=main&label=build&style=flat-square)](https://github.com/Gianpi96/ai-automation-agent/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/Gianpi96/ai-automation-agent/tests.yml?branch=main&label=build&style=flat-square)](https://github.com/Gianpi96/ai-automation-agent/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue?style=flat-square)](https://www.python.org)
 
@@ -18,12 +18,6 @@
 - **13+ endpoint REST documentati** — API FastAPI con documentazione automatica su `/docs`. Ogni endpoint ha schema di input/output, esempi, e codici di errore.
 - **PostgreSQL per la persistenza** — i risultati delle run, i documenti elaborati, e le classificazioni email vengono salvati e sono interrogabili. Niente si perde al riavvio.
 - **Docker Compose per il deploy** — un comando avvia backend, frontend, e database insieme.
-
----
-
-## Screenshots
-
-> Aggiungi screenshot/GIF della dashboard qui: `![Agent Dashboard](docs/screenshot-dashboard.png)`
 
 ---
 
